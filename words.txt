@@ -1,0 +1,15 @@
+cat
+dog
+sun
+moon
+star
+tree
+flower
+computer
+keyboard
+mouse
+developer
+programming
+qt
+framework
+awesome
