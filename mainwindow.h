@@ -21,6 +21,7 @@ private slots:
     void onStartGame();
     void onGameFinished(int score);
     void onOpenSettings();
+    void onOpenWordEditor();
 
 private:
     void setupUI();
@@ -40,6 +41,7 @@ private:
     QLineEdit *m_inputEdit;
     QPushButton *m_startButton;
     QPushButton *m_settingsButton;
+    QPushButton *m_editWordsButton;
 };
 
 #endif // MAINWINDOW_H

@@ -37,6 +37,7 @@ public:
 
             // Пробуем разделить по запятым
             if (line.contains(',')) {
+                // Используем QString::SkipEmptyParts вместо Qt::SkipEmptyParts для совместимости
                 QStringList lineWords = line.split(',', QString::SkipEmptyParts);
                 for (QString &word : lineWords) {
                     word = word.trimmed();
@@ -57,6 +58,39 @@ public:
         }
 
         return words;
+    }
+
+    static bool saveToFile(const QString &filePath, const QStringList &words)
+    {
+        if (filePath.isEmpty()) {
+            qDebug() << "Empty file path";
+            return false;
+        }
+
+        QFile file(filePath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            qDebug() << "Cannot open file for writing:" << filePath;
+            return false;
+        }
+
+        QTextStream stream(&file);
+        stream << "# Word list for Word Race Game\n";
+        stream << "# Each word on a new line\n";
+        stream << "# Lines starting with # are ignored\n\n";
+
+        for (const QString &word : words) {
+            if (!word.trimmed().isEmpty()) {
+                stream << word.trimmed() << "\n";
+            }
+        }
+
+        file.close();
+        return true;
+    }
+
+    static QString getDefaultWordFilePath()
+    {
+        return "words.txt";
     }
 
     static QStringList getDefaultWords()
