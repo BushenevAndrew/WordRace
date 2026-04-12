@@ -8,36 +8,54 @@
 #include <QRegularExpression>
 #include <QDebug>
 
+/**
+ * @brief Утилитарный класс для загрузки и сохранения списков слов
+ * Содержит только статические методы, не требует создания экземпляра
+ */
 class WordListLoader
 {
 public:
+    /**
+     * @brief Загрузка слов из текстового файла
+     * @param filePath - путь к файлу
+     * @return QStringList - список загруженных слов
+     *
+     * Поддерживаемые форматы:
+     * - Одно слово на строку
+     * - Слова через запятую на одной строке (cat,dog,fish)
+     * - Строки, начинающиеся с '#' - комментарии (игнорируются)
+     *
+     * При ошибке возвращает стандартный список слов
+     */
     static QStringList loadFromFile(const QString &filePath)
     {
         QStringList words;
 
+        // Проверка существования файла
         if (filePath.isEmpty() || !QFile::exists(filePath)) {
             qDebug() << "File not found or empty path:" << filePath;
             return getDefaultWords();
         }
 
+        // Открытие файла
         QFile file(filePath);
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             qDebug() << "Cannot open file:" << filePath;
             return getDefaultWords();
         }
 
+        // Чтение файла построчно
         QTextStream stream(&file);
         while (!stream.atEnd()) {
             QString line = stream.readLine().trimmed();
 
-            // Пропускаем пустые строки и комментарии
+            // Пропуск пустых строк и комментариев
             if (line.isEmpty() || line.startsWith('#')) {
                 continue;
             }
 
-            // Пробуем разделить по запятым
+            // Обработка строки с запятыми
             if (line.contains(',')) {
-                // Используем QString::SkipEmptyParts вместо Qt::SkipEmptyParts для совместимости
                 QStringList lineWords = line.split(',', QString::SkipEmptyParts);
                 for (QString &word : lineWords) {
                     word = word.trimmed();
@@ -46,12 +64,13 @@ public:
                     }
                 }
             } else {
-                // Одно слово на строку
+                // Одиночное слово
                 words.append(line);
             }
         }
         file.close();
 
+        // Проверка, что слова были загружены
         if (words.isEmpty()) {
             qDebug() << "No words loaded, using defaults";
             return getDefaultWords();
@@ -60,6 +79,15 @@ public:
         return words;
     }
 
+    /**
+     * @brief Сохранение списка слов в файл
+     * @param filePath - путь для сохранения
+     * @param words - список слов
+     * @return true - успешно, false - ошибка
+     *
+     * Сохраняет слова в формате "одно слово на строку"
+     * Добавляет заголовок с комментариями
+     */
     static bool saveToFile(const QString &filePath, const QStringList &words)
     {
         if (filePath.isEmpty()) {
@@ -67,12 +95,14 @@ public:
             return false;
         }
 
+        // Открытие файла для записи
         QFile file(filePath);
         if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             qDebug() << "Cannot open file for writing:" << filePath;
             return false;
         }
 
+        // Запись слов в файл
         QTextStream stream(&file);
         stream << "# Word list for Word Race Game\n";
         stream << "# Each word on a new line\n";
@@ -88,11 +118,19 @@ public:
         return true;
     }
 
+    /**
+     * @brief Получение пути к файлу со словами по умолчанию
+     * @return "words.txt" в текущей директории
+     */
     static QString getDefaultWordFilePath()
     {
         return "words.txt";
     }
 
+    /**
+     * @brief Стандартный английский словарь
+     * @return список из 20 базовых английских слов
+     */
     static QStringList getDefaultWords()
     {
         return QStringList()
@@ -102,6 +140,10 @@ public:
             << "keyboard" << "mouse" << "screen" << "developer" << "program";
     }
 
+    /**
+     * @brief Стандартный русский словарь
+     * @return список базовых русских слов
+     */
     static QStringList getRussianDefaultWords()
     {
         return QStringList()
