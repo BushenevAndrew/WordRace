@@ -1,5 +1,5 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef MAINWIDGET_H
+#define MAINWIDGET_H
 
 #include <QMainWindow>
 #include <QSettings>
@@ -8,6 +8,7 @@ class GameWidget;
 class QLineEdit;
 class QLabel;
 class QPushButton;
+class QSpinBox;
 
 class MainWindow : public QMainWindow
 {
@@ -19,6 +20,7 @@ public:
 
 private slots:
     void onStartGame();
+    void onStopGame();
     void onGameFinished(int score);
     void onOpenSettings();
     void onOpenWordEditor();
@@ -34,14 +36,19 @@ private:
     QSettings m_settings;
     bool m_gameActive;
     QStringList m_currentWordList;
+    int m_fieldWidth;
+    int m_fieldHeight;
 
     // UI элементы
     QLabel *m_scoreLabel;
     QLabel *m_timeLabel;
     QLineEdit *m_inputEdit;
     QPushButton *m_startButton;
+    QPushButton *m_stopButton;
     QPushButton *m_settingsButton;
     QPushButton *m_editWordsButton;
+    QSpinBox *m_widthSpin;
+    QSpinBox *m_heightSpin;
 };
 
-#endif // MAINWINDOW_H
+#endif // MAINWIDGET_H

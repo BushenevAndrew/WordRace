@@ -14,12 +14,13 @@ GameWidget::GameWidget(QWidget *parent) : QWidget(parent)
     m_moveTimerId = 0;
     m_score = 0;
     m_gameDuration = 60;
-    m_linesCount = 4;
     m_wordSpeed = 3.5;
     m_countdownTimer = nullptr;
+    m_fieldWidth = 800;
+    m_fieldHeight = 400;
 }
 
-void GameWidget::startGame(int durationSeconds, const QStringList &wordList, const QString &lang, double wordSpeed)
+void GameWidget::startGame(int durationSeconds, const QStringList &wordList, const QString &lang, double wordSpeed, int fieldWidth, int fieldHeight)
 {
     stopGame();
 
@@ -29,15 +30,11 @@ void GameWidget::startGame(int durationSeconds, const QStringList &wordList, con
     m_wordSpeed = wordSpeed;
     m_score = 0;
     m_words.clear();
+    m_fieldWidth = fieldWidth;
+    m_fieldHeight = fieldHeight;
 
     emit scoreChanged(0);
     emit timeLeftChanged(durationSeconds);
-
-    m_lineYPositions.clear();
-    int startY = 70;
-    for (int i = 0; i < m_linesCount; ++i) {
-        m_lineYPositions.append(startY + i * 70);
-    }
 
     // Таймеры
     m_spawnTimerId = startTimer(1800);
@@ -75,6 +72,7 @@ void GameWidget::stopGame()
         m_countdownTimer->deleteLater();
         m_countdownTimer = nullptr;
     }
+    clearWords(); // Очищаем слова
 }
 
 void GameWidget::setWordSpeed(double speed)
@@ -99,6 +97,12 @@ bool GameWidget::tryRemoveWord(const QString &input)
     return false;
 }
 
+void GameWidget::clearWords()
+{
+    m_words.clear();
+    update();
+}
+
 void GameWidget::spawnWord()
 {
     if (m_dictionary.isEmpty()) return;
@@ -107,30 +111,11 @@ void GameWidget::spawnWord()
     QString word = m_dictionary[randomIndex];
     if (word.isEmpty()) return;
 
-    // Выбираем наименее загруженную строку
-    QList<int> wordsPerLine;
-    // Инициализируем список нулями
-    for (int i = 0; i < m_linesCount; ++i) {
-        wordsPerLine.append(0);
-    }
-
-    for (const MovingWord &w : m_words) {
-        int lineIdx = m_lineYPositions.indexOf(w.y);
-        if (lineIdx >= 0 && lineIdx < wordsPerLine.size()) {
-            wordsPerLine[lineIdx]++;
-        }
-    }
-
-    int bestLine = 0;
-    for (int i = 1; i < m_linesCount; ++i) {
-        if (wordsPerLine[i] < wordsPerLine[bestLine]) bestLine = i;
-    }
-
     MovingWord newWord;
     newWord.text = word;
     newWord.length = word.length();
     newWord.x = 0.0;
-    newWord.y = m_lineYPositions[bestLine];
+    newWord.y = QRandomGenerator::global()->bounded(m_fieldHeight);
     newWord.active = true;
     m_words.append(newWord);
 }
@@ -143,7 +128,7 @@ void GameWidget::updatePositions()
 
         m_words[i].x += m_wordSpeed;
 
-        if (m_words[i].x > width() + 100) {
+        if (m_words[i].x > m_fieldWidth + 100) {
             m_words.removeAt(i);
             i--;
             anyMoved = true;
@@ -164,13 +149,6 @@ void GameWidget::paintEvent(QPaintEvent *event)
     // Отрисовка фона
     painter.fillRect(rect(), QColor(240, 240, 245));
 
-    // Линии-разделители дорожек
-    painter.setPen(QPen(QColor(200, 200, 200), 1, Qt::DotLine));
-    for (qreal y : m_lineYPositions) {
-        painter.drawLine(0, y - 25, width(), y - 25);
-        painter.drawLine(0, y + 20, width(), y + 20);
-    }
-
     // Рисуем слова
     QFont font("Arial", 18, QFont::Bold);
     painter.setFont(font);
@@ -179,9 +157,9 @@ void GameWidget::paintEvent(QPaintEvent *event)
         painter.setPen(QPen(QColor(50, 50, 180), 2));
         painter.setBrush(QColor(100, 100, 220, 200));
 
-        QRect textRect(word.x, word.y - 18,
+        QRectF textRect(word.x, word.y - 18,
                       QFontMetrics(font).horizontalAdvance(word.text) + 20, 40);
-        painter.drawRoundedRect(textRect, 5, 5);
+        painter.drawRoundedRect(textRect, 15, 15);
 
         painter.setPen(Qt::white);
         painter.drawText(textRect, Qt::AlignCenter, word.text);
@@ -189,7 +167,7 @@ void GameWidget::paintEvent(QPaintEvent *event)
 
     // Красная граница справа
     painter.setPen(QPen(Qt::red, 2, Qt::DashLine));
-    painter.drawLine(width() - 10, 0, width() - 10, height());
+    painter.drawLine(m_fieldWidth - 10, 0, m_fieldWidth - 10, m_fieldHeight);
 }
 
 void GameWidget::timerEvent(QTimerEvent *event)

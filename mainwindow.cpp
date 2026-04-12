@@ -24,6 +24,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_settings("MyCompany", "WordRaceGame")
     , m_gameActive(false)
+    , m_fieldWidth(800)
+    , m_fieldHeight(400)
 {
     setupUI();
     loadSettings();
@@ -53,6 +55,11 @@ void MainWindow::setupUI()
     m_startButton->setStyleSheet("QPushButton { background-color: #27ae60; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }"
                                  "QPushButton:hover { background-color: #229954; }");
 
+    m_stopButton = new QPushButton("⏹ Stop Game");
+    m_stopButton->setStyleSheet("QPushButton { background-color: #e74c3c; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }"
+                                "QPushButton:hover { background-color: #c0392b; }");
+    m_stopButton->setVisible(false);
+
     m_settingsButton = new QPushButton("⚙ Settings");
     m_settingsButton->setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }"
                                     "QPushButton:hover { background-color: #2980b9; }");
@@ -66,12 +73,13 @@ void MainWindow::setupUI()
     topLayout->addWidget(m_timeLabel);
     topLayout->addStretch();
     topLayout->addWidget(m_startButton);
+    topLayout->addWidget(m_stopButton);
     topLayout->addWidget(m_settingsButton);
     topLayout->addWidget(m_editWordsButton);
 
     // Игровое поле
     m_gameWidget = new GameWidget(this);
-    m_gameWidget->setMinimumHeight(400);
+    m_gameWidget->setMinimumSize(m_fieldWidth, m_fieldHeight);
 
     // Поле ввода
     m_inputEdit = new QLineEdit;
@@ -88,6 +96,7 @@ void MainWindow::setupUI()
 
     // Подключаем сигналы
     connect(m_startButton, &QPushButton::clicked, this, &MainWindow::onStartGame);
+    connect(m_stopButton, &QPushButton::clicked, this, &MainWindow::onStopGame);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainWindow::onOpenSettings);
     connect(m_editWordsButton, &QPushButton::clicked, this, &MainWindow::onOpenWordEditor);
     connect(m_gameWidget, &GameWidget::scoreChanged, this, &MainWindow::updateScoreDisplay);
@@ -105,189 +114,6 @@ void MainWindow::setupUI()
             });
         }
     });
-}
-
-void MainWindow::onOpenWordEditor()
-{
-    QDialog dialog(this);
-    dialog.setWindowTitle("✏ Word List Editor");
-    dialog.setMinimumSize(500, 600);
-    dialog.setStyleSheet("QDialog { background-color: #ecf0f1; }");
-
-    QVBoxLayout *layout = new QVBoxLayout(&dialog);
-
-    // Информационная метка
-    QLabel *infoLabel = new QLabel(
-        "<h3>📝 Edit Your Word List</h3>"
-        "<p>Add, remove, or modify words for the game.<br>"
-        "<b>Tip:</b> Each word should be on a new line.</p>"
-    );
-    infoLabel->setWordWrap(true);
-    layout->addWidget(infoLabel);
-
-    // Текстовый редактор
-    QTextEdit *wordEditor = new QTextEdit;
-    wordEditor->setFont(QFont("Consolas", 11));
-    wordEditor->setStyleSheet("QTextEdit { background-color: white; border: 2px solid #bdc3c7; border-radius: 5px; padding: 10px; }");
-
-    // Загружаем текущие слова
-    QString wordFilePath = m_settings.value("wordfile", WordListLoader::getDefaultWordFilePath()).toString();
-    QStringList currentWords;
-
-    if (!wordFilePath.isEmpty() && QFile::exists(wordFilePath)) {
-        currentWords = WordListLoader::loadFromFile(wordFilePath);
-    } else {
-        // Если файла нет или он пустой, используем слова по умолчанию
-        QString lang = m_settings.value("language", "en").toString();
-        if (lang == "ru") {
-            currentWords = WordListLoader::getRussianDefaultWords();
-        } else {
-            currentWords = WordListLoader::getDefaultWords();
-        }
-    }
-
-    wordEditor->setPlainText(currentWords.join("\n"));
-    layout->addWidget(wordEditor);
-
-    // Кнопки управления
-    QHBoxLayout *buttonLayout = new QHBoxLayout;
-
-    QPushButton *loadFileBtn = new QPushButton("📂 Load from File");
-    loadFileBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #3498db; color: white; border-radius: 5px; }"
-                               "QPushButton:hover { background-color: #2980b9; }");
-
-    QPushButton *saveToFileBtn = new QPushButton("💾 Save to File");
-    saveToFileBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #27ae60; color: white; border-radius: 5px; }"
-                                 "QPushButton:hover { background-color: #229954; }");
-
-    QPushButton *defaultWordsBtn = new QPushButton("🔄 Reset to Default");
-    defaultWordsBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #e67e22; color: white; border-radius: 5px; }"
-                                   "QPushButton:hover { background-color: #d35400; }");
-
-    QPushButton *clearBtn = new QPushButton("🗑 Clear All");
-    clearBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #e74c3c; color: white; border-radius: 5px; }"
-                            "QPushButton:hover { background-color: #c0392b; }");
-
-    buttonLayout->addWidget(loadFileBtn);
-    buttonLayout->addWidget(saveToFileBtn);
-    buttonLayout->addWidget(defaultWordsBtn);
-    buttonLayout->addWidget(clearBtn);
-    layout->addLayout(buttonLayout);
-
-    // Статистика
-    QLabel *statsLabel = new QLabel;
-    statsLabel->setStyleSheet("color: #7f8c8d; font-size: 12px; margin-top: 10px;");
-
-    auto updateStats = [statsLabel, wordEditor]() {
-        QString text = wordEditor->toPlainText();
-        QStringList lines = text.split("\n", QString::SkipEmptyParts);
-        int wordCount = 0;
-        for (const QString &line : lines) {
-            if (!line.trimmed().isEmpty()) {
-                wordCount++;
-            }
-        }
-        statsLabel->setText(QString("📊 Statistics: %1 words loaded | %2 lines total")
-                           .arg(wordCount).arg(lines.size()));
-    };
-
-    updateStats();
-    connect(wordEditor, &QTextEdit::textChanged, updateStats);
-    layout->addWidget(statsLabel);
-
-    // Кнопки OK/Cancel
-    QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttons->setStyleSheet("QPushButton { padding: 8px 16px; }");
-    layout->addWidget(buttons);
-
-    // Функция для сохранения слов в файл
-    auto saveWordsToFile = [&](const QStringList &words) -> bool {
-        QString savePath = m_settings.value("wordfile", WordListLoader::getDefaultWordFilePath()).toString();
-
-        if (savePath.isEmpty()) {
-            savePath = WordListLoader::getDefaultWordFilePath();
-            m_settings.setValue("wordfile", savePath);
-        }
-
-        return WordListLoader::saveToFile(savePath, words);
-    };
-
-    // Подключаем кнопки
-    connect(loadFileBtn, &QPushButton::clicked, [&dialog, wordEditor]() {
-        QString filePath = QFileDialog::getOpenFileName(&dialog, "Load Word List",
-                                                         "", "Text Files (*.txt);;All Files (*)");
-        if (!filePath.isEmpty()) {
-            QStringList words = WordListLoader::loadFromFile(filePath);
-            wordEditor->setPlainText(words.join("\n"));
-            QMessageBox::information(&dialog, "Success",
-                QString("Loaded %1 words from file.").arg(words.size()));
-        }
-    });
-
-    connect(saveToFileBtn, &QPushButton::clicked, [&dialog, wordEditor, saveWordsToFile]() {
-        QString text = wordEditor->toPlainText();
-        QStringList words;
-
-        for (const QString &line : text.split("\n", QString::SkipEmptyParts)) {
-            QString trimmed = line.trimmed();
-            if (!trimmed.isEmpty()) {
-                words.append(trimmed);
-            }
-        }
-
-        if (words.isEmpty()) {
-            QMessageBox::warning(&dialog, "Error", "Cannot save empty word list!");
-            return;
-        }
-
-        if (saveWordsToFile(words)) {
-            QMessageBox::information(&dialog, "Success",
-                QString("✅ Saved %1 words to file!\n\nYou can use them in the next game.").arg(words.size()));
-        } else {
-            QMessageBox::critical(&dialog, "Error", "Failed to save words to file!");
-        }
-    });
-
-    connect(defaultWordsBtn, &QPushButton::clicked, [wordEditor]() {
-        QStringList defaultWords = WordListLoader::getDefaultWords();
-        wordEditor->setPlainText(defaultWords.join("\n"));
-        QMessageBox::information(nullptr, "Reset", "Default word list loaded.");
-    });
-
-    connect(clearBtn, &QPushButton::clicked, [wordEditor]() {
-        if (QMessageBox::question(nullptr, "Clear All",
-                                  "Are you sure you want to clear all words?",
-                                  QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
-            wordEditor->clear();
-        }
-    });
-
-    connect(buttons, &QDialogButtonBox::accepted, [&, saveWordsToFile]() {
-        // Сохраняем изменения при нажатии OK
-        QString text = wordEditor->toPlainText();
-        QStringList words;
-
-        for (const QString &line : text.split("\n", QString::SkipEmptyParts)) {
-            QString trimmed = line.trimmed();
-            if (!trimmed.isEmpty()) {
-                words.append(trimmed);
-            }
-        }
-
-        if (!words.isEmpty()) {
-            if (saveWordsToFile(words)) {
-                dialog.accept();
-            } else {
-                QMessageBox::critical(&dialog, "Error", "Failed to save changes!");
-            }
-        } else {
-            QMessageBox::warning(&dialog, "Error", "Word list cannot be empty!");
-        }
-    });
-
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-    dialog.exec();
 }
 
 void MainWindow::onStartGame()
@@ -308,7 +134,6 @@ void MainWindow::onStartGame()
         } else {
             m_currentWordList = WordListLoader::getDefaultWords();
         }
-        // Сохраняем слова по умолчанию в файл, если его нет
         WordListLoader::saveToFile(wordFilePath, m_currentWordList);
     }
 
@@ -322,10 +147,26 @@ void MainWindow::onStartGame()
     m_inputEdit->clear();
     m_inputEdit->setFocus();
     m_startButton->setEnabled(false);
+    m_stopButton->setVisible(true);
     m_settingsButton->setEnabled(false);
     m_editWordsButton->setEnabled(false);
 
-    m_gameWidget->startGame(duration, m_currentWordList, lang, speed);
+    m_gameWidget->startGame(duration, m_currentWordList, lang, speed, m_fieldWidth, m_fieldHeight);
+}
+
+void MainWindow::onStopGame()
+{
+    if (!m_gameActive) return;
+
+    m_gameWidget->stopGame();
+    m_gameActive = false;
+    m_inputEdit->setEnabled(false);
+    m_startButton->setEnabled(true);
+    m_stopButton->setVisible(false);
+    m_settingsButton->setEnabled(true);
+    m_editWordsButton->setEnabled(true);
+    m_scoreLabel->setText("Score: 0");
+    m_timeLabel->setText("Time: 0 sec");
 }
 
 void MainWindow::onGameFinished(int score)
@@ -333,6 +174,7 @@ void MainWindow::onGameFinished(int score)
     m_gameActive = false;
     m_inputEdit->setEnabled(false);
     m_startButton->setEnabled(true);
+    m_stopButton->setVisible(false);
     m_settingsButton->setEnabled(true);
     m_editWordsButton->setEnabled(true);
 
@@ -353,7 +195,7 @@ void MainWindow::onOpenSettings()
 {
     QDialog dialog(this);
     dialog.setWindowTitle("Game Settings");
-    dialog.setMinimumWidth(450);
+    dialog.setMinimumWidth(500);
     dialog.setStyleSheet("QDialog { background-color: #ecf0f1; }");
 
     QVBoxLayout *layout = new QVBoxLayout(&dialog);
@@ -379,6 +221,24 @@ void MainWindow::onOpenSettings()
     QComboBox *langCombo = new QComboBox;
     langCombo->addItems({"English", "Русский"});
     langCombo->setCurrentText(m_settings.value("language") == "ru" ? "Русский" : "English");
+
+    // Группа настроек поля
+    QGroupBox *fieldGroup = new QGroupBox("📏 Field Size");
+    fieldGroup->setStyleSheet("QGroupBox { font-weight: bold; margin-top: 10px; }");
+    QFormLayout *fieldForm = new QFormLayout(fieldGroup);
+
+    m_widthSpin = new QSpinBox;
+    m_widthSpin->setRange(400, 1600);
+    m_widthSpin->setValue(m_settings.value("fieldWidth", 800).toInt());
+    m_widthSpin->setSuffix(" px");
+
+    m_heightSpin = new QSpinBox;
+    m_heightSpin->setRange(300, 900);
+    m_heightSpin->setValue(m_settings.value("fieldHeight", 400).toInt());
+    m_heightSpin->setSuffix(" px");
+
+    fieldForm->addRow("Width:", m_widthSpin);
+    fieldForm->addRow("Height:", m_heightSpin);
 
     gameForm->addRow("⏱ Game duration:", durationSpin);
     gameForm->addRow("⚡ Word speed:", speedSpin);
@@ -420,75 +280,273 @@ void MainWindow::onOpenSettings()
     );
     formatInfo->setWordWrap(true);
     formatInfo->setStyleSheet("color: #7f8c8d; font-size: 11px; margin-top: 10px;");
-    wordsLayout->addWidget(formatInfo);
 
-    // Кнопки
-    QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttons->setStyleSheet("QPushButton { padding: 8px 16px; }");
+        wordsLayout->addWidget(formatInfo);
 
-    layout->addWidget(gameGroup);
-    layout->addWidget(wordsGroup);
-    layout->addWidget(buttons);
+        // Кнопки
+        QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        buttons->setStyleSheet("QPushButton { padding: 8px 16px; }");
 
-    // Подключаем логику предпросмотра
-    connect(browseBtn, &QPushButton::clicked, [&dialog, fileEdit, previewEdit, previewBtn]() {
-        QString filePath = QFileDialog::getOpenFileName(&dialog, "Select Word File",
-                                                         "", "Text Files (*.txt);;All Files (*)");
-        if (!filePath.isEmpty()) {
-            fileEdit->setText(filePath);
-            if (previewBtn->isChecked()) {
-                QStringList words = WordListLoader::loadFromFile(filePath);
+        layout->addWidget(gameGroup);
+        layout->addWidget(fieldGroup);
+        layout->addWidget(wordsGroup);
+        layout->addWidget(buttons);
+
+        // Подключаем логику предпросмотра
+        connect(browseBtn, &QPushButton::clicked, [&dialog, fileEdit, previewEdit, previewBtn]() {
+            QString filePath = QFileDialog::getOpenFileName(&dialog, "Select Word File",
+                                                             "", "Text Files (*.txt);;All Files (*)");
+            if (!filePath.isEmpty()) {
+                fileEdit->setText(filePath);
+                if (previewBtn->isChecked()) {
+                    QStringList words = WordListLoader::loadFromFile(filePath);
+                    previewEdit->setText(words.join(", "));
+                    previewEdit->setVisible(true);
+                }
+            }
+        });
+
+        connect(previewBtn, &QPushButton::toggled, [fileEdit, previewEdit](bool checked) {
+            if (checked && !fileEdit->text().isEmpty()) {
+                QStringList words = WordListLoader::loadFromFile(fileEdit->text());
                 previewEdit->setText(words.join(", "));
                 previewEdit->setVisible(true);
+            } else {
+                previewEdit->setVisible(false);
+            }
+        });
+
+        connect(buttons, &QDialogButtonBox::accepted, [&]() {
+            m_settings.setValue("duration", durationSpin->value());
+            m_settings.setValue("speed", speedSpin->value());
+            m_settings.setValue("language", langCombo->currentText() == "Русский" ? "ru" : "en");
+            m_settings.setValue("wordfile", fileEdit->text());
+            m_settings.setValue("fieldWidth", m_widthSpin->value());
+            m_settings.setValue("fieldHeight", m_heightSpin->value());
+
+            m_fieldWidth = m_widthSpin->value();
+            m_fieldHeight = m_heightSpin->value();
+            m_gameWidget->setMinimumSize(m_fieldWidth, m_fieldHeight);
+
+            QMessageBox::information(this, "Settings Saved",
+                "✅ Settings will be applied on next game start.\n\n"
+                "Current field size: " + QString::number(m_fieldWidth) + "x" + QString::number(m_fieldHeight) + " px");
+            dialog.accept();
+        });
+
+        connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+        dialog.exec();
+    }
+
+    void MainWindow::onOpenWordEditor()
+    {
+        QDialog dialog(this);
+        dialog.setWindowTitle("✏ Word List Editor");
+        dialog.setMinimumSize(500, 600);
+        dialog.setStyleSheet("QDialog { background-color: #ecf0f1; }");
+
+        QVBoxLayout *layout = new QVBoxLayout(&dialog);
+
+        // Информационная метка
+        QLabel *infoLabel = new QLabel(
+            "<h3>📝 Edit Your Word List</h3>"
+            "<p>Add, remove, or modify words for the game.<br>"
+            "<b>Tip:</b> Each word should be on a new line.</p>"
+        );
+        infoLabel->setWordWrap(true);
+        layout->addWidget(infoLabel);
+
+        // Текстовый редактор
+        QTextEdit *wordEditor = new QTextEdit;
+        wordEditor->setFont(QFont("Consolas", 11));
+        wordEditor->setStyleSheet("QTextEdit { background-color: white; border: 2px solid #bdc3c7; border-radius: 5px; padding: 10px; }");
+
+        // Загружаем текущие слова
+        QString wordFilePath = m_settings.value("wordfile", WordListLoader::getDefaultWordFilePath()).toString();
+        QStringList currentWords;
+
+        if (!wordFilePath.isEmpty() && QFile::exists(wordFilePath)) {
+            currentWords = WordListLoader::loadFromFile(wordFilePath);
+        } else {
+            // Если файла нет или он пустой, используем слова по умолчанию
+            QString lang = m_settings.value("language", "en").toString();
+            if (lang == "ru") {
+                currentWords = WordListLoader::getRussianDefaultWords();
+            } else {
+                currentWords = WordListLoader::getDefaultWords();
             }
         }
-    });
 
-    connect(previewBtn, &QPushButton::toggled, [fileEdit, previewEdit](bool checked) {
-        if (checked && !fileEdit->text().isEmpty()) {
-            QStringList words = WordListLoader::loadFromFile(fileEdit->text());
-            previewEdit->setText(words.join(", "));
-            previewEdit->setVisible(true);
-        } else {
-            previewEdit->setVisible(false);
-        }
-    });
+        wordEditor->setPlainText(currentWords.join("\n"));
+        layout->addWidget(wordEditor);
 
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+        // Кнопки управления
+        QHBoxLayout *buttonLayout = new QHBoxLayout;
 
-    if (dialog.exec() == QDialog::Accepted) {
-        m_settings.setValue("duration", durationSpin->value());
-        m_settings.setValue("speed", speedSpin->value());
-        m_settings.setValue("language", langCombo->currentText() == "Русский" ? "ru" : "en");
-        m_settings.setValue("wordfile", fileEdit->text());
+        QPushButton *loadFileBtn = new QPushButton("📂 Load from File");
+        loadFileBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #3498db; color: white; border-radius: 5px; }"
+                                   "QPushButton:hover { background-color: #2980b9; }");
 
-        QMessageBox::information(this, "Settings Saved",
-            "✅ Settings will be applied on next game start.\n\n"
-            "Current speed: " + QString::number(speedSpin->value()) + " px/frame\n"
-            "Game duration: " + QString::number(durationSpin->value()) + " seconds");
+        QPushButton *saveToFileBtn = new QPushButton("💾 Save to File");
+        saveToFileBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #27ae60; color: white; border-radius: 5px; }"
+                                     "QPushButton:hover { background-color: #229954; }");
+
+        QPushButton *defaultWordsBtn = new QPushButton("🔄 Reset to Default");
+        defaultWordsBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #e67e22; color: white; border-radius: 5px; }"
+                                       "QPushButton:hover { background-color: #d35400; }");
+
+        QPushButton *clearBtn = new QPushButton("🗑 Clear All");
+        clearBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #e74c3c; color: white; border-radius: 5px; }"
+                                "QPushButton:hover { background-color: #c0392b; }");
+
+        buttonLayout->addWidget(loadFileBtn);
+        buttonLayout->addWidget(saveToFileBtn);
+        buttonLayout->addWidget(defaultWordsBtn);
+        buttonLayout->addWidget(clearBtn);
+        layout->addLayout(buttonLayout);
+
+        // Статистика
+        QLabel *statsLabel = new QLabel;
+        statsLabel->setStyleSheet("color: #7f8c8d; font-size: 12px; margin-top: 10px;");
+
+        auto updateStats = [statsLabel, wordEditor]() {
+            QString text = wordEditor->toPlainText();
+            QStringList lines = text.split("\n", QString::SkipEmptyParts);
+            int wordCount = 0;
+            for (const QString &line : lines) {
+                if (!line.trimmed().isEmpty()) {
+                    wordCount++;
+                }
+            }
+            statsLabel->setText(QString("📊 Statistics: %1 words loaded | %2 lines total")
+                               .arg(wordCount).arg(lines.size()));
+        };
+
+        updateStats();
+        connect(wordEditor, &QTextEdit::textChanged, updateStats);
+        layout->addWidget(statsLabel);
+
+        // Кнопки OK/Cancel
+        QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        buttons->setStyleSheet("QPushButton { padding: 8px 16px; }");
+        layout->addWidget(buttons);
+
+        // Функция для сохранения слов в файл
+        auto saveWordsToFile = [&](const QStringList &words) -> bool {
+            QString savePath = m_settings.value("wordfile", WordListLoader::getDefaultWordFilePath()).toString();
+
+            if (savePath.isEmpty()) {
+                savePath = WordListLoader::getDefaultWordFilePath();
+                m_settings.setValue("wordfile", savePath);
+            }
+
+            return WordListLoader::saveToFile(savePath, words);
+        };
+
+        // Подключаем кнопки
+        connect(loadFileBtn, &QPushButton::clicked, [&dialog, wordEditor]() {
+            QString filePath = QFileDialog::getOpenFileName(&dialog, "Load Word List",
+                                                             "", "Text Files (*.txt);;All Files (*)");
+            if (!filePath.isEmpty()) {
+                QStringList words = WordListLoader::loadFromFile(filePath);
+                wordEditor->setPlainText(words.join("\n"));
+                QMessageBox::information(&dialog, "Success",
+                    QString("Loaded %1 words from file.").arg(words.size()));
+            }
+        });
+
+        connect(saveToFileBtn, &QPushButton::clicked, [&dialog, wordEditor, saveWordsToFile]() {
+            QString text = wordEditor->toPlainText();
+            QStringList words;
+
+            for (const QString &line : text.split("\n", QString::SkipEmptyParts)) {
+                QString trimmed = line.trimmed();
+                if (!trimmed.isEmpty()) {
+                    words.append(trimmed);
+                }
+            }
+
+            if (words.isEmpty()) {
+                QMessageBox::warning(&dialog, "Error", "Cannot save empty word list!");
+                return;
+            }
+
+            if (saveWordsToFile(words)) {
+                QMessageBox::information(&dialog, "Success",
+                    QString("✅ Saved %1 words to file!\n\nYou can use them in the next game.").arg(words.size()));
+            } else {
+                QMessageBox::critical(&dialog, "Error", "Failed to save words to file!");
+            }
+        });
+
+        connect(defaultWordsBtn, &QPushButton::clicked, [wordEditor]() {
+            QStringList defaultWords = WordListLoader::getDefaultWords();
+            wordEditor->setPlainText(defaultWords.join("\n"));
+            QMessageBox::information(nullptr, "Reset", "Default word list loaded.");
+        });
+
+        connect(clearBtn, &QPushButton::clicked, [wordEditor]() {
+            if (QMessageBox::question(nullptr, "Clear All",
+                                      "Are you sure you want to clear all words?",
+
+                                      QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
+                wordEditor->clear();
+            }
+        });
+
+        connect(buttons, &QDialogButtonBox::accepted, [&, saveWordsToFile]() {
+            // Сохраняем изменения при нажатии OK
+            QString text = wordEditor->toPlainText();
+            QStringList words;
+
+            for (const QString &line : text.split("\n", QString::SkipEmptyParts)) {
+                QString trimmed = line.trimmed();
+                if (!trimmed.isEmpty()) {
+                    words.append(trimmed);
+                }
+            }
+
+            if (!words.isEmpty()) {
+                if (saveWordsToFile(words)) {
+                    dialog.accept();
+                } else {
+                    QMessageBox::critical(&dialog, "Error", "Failed to save changes!");
+                }
+            } else {
+                QMessageBox::warning(&dialog, "Error", "Word list cannot be empty!");
+            }
+        });
+
+        connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+        dialog.exec();
     }
-}
 
-void MainWindow::updateScoreDisplay(int score)
-{
-    m_scoreLabel->setText(QString("⭐ Score: %1").arg(score));
-}
+    void MainWindow::updateScoreDisplay(int score)
+    {
+        m_scoreLabel->setText(QString("⭐ Score: %1").arg(score));
+    }
 
-void MainWindow::updateTimeDisplay(int seconds)
-{
-    m_timeLabel->setText(QString("⏱ Time: %1 sec").arg(seconds));
-}
+    void MainWindow::updateTimeDisplay(int seconds)
+    {
+        m_timeLabel->setText(QString("⏱ Time: %1 sec").arg(seconds));
+    }
 
-void MainWindow::loadSettings()
-{
-    if (!m_settings.contains("duration")) m_settings.setValue("duration", 60);
-    if (!m_settings.contains("speed")) m_settings.setValue("speed", 3.5);
-    if (!m_settings.contains("language")) m_settings.setValue("language", "en");
-    if (!m_settings.contains("wordfile")) m_settings.setValue("wordfile", WordListLoader::getDefaultWordFilePath());
-}
+    void MainWindow::loadSettings()
+    {
+        if (!m_settings.contains("duration")) m_settings.setValue("duration", 60);
+        if (!m_settings.contains("speed")) m_settings.setValue("speed", 3.5);
+        if (!m_settings.contains("language")) m_settings.setValue("language", "en");
+        if (!m_settings.contains("wordfile")) m_settings.setValue("wordfile", WordListLoader::getDefaultWordFilePath());
+        if (!m_settings.contains("fieldWidth")) m_settings.setValue("fieldWidth", 800);
+        if (!m_settings.contains("fieldHeight")) m_settings.setValue("fieldHeight", 400);
 
-void MainWindow::saveSettings()
-{
-    m_settings.sync();
-}
+        m_fieldWidth = m_settings.value("fieldWidth").toInt();
+        m_fieldHeight = m_settings.value("fieldHeight").toInt();
+    }
+
+    void MainWindow::saveSettings()
+    {
+        m_settings.sync();
+    }

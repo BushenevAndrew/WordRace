@@ -21,7 +21,7 @@ class GameWidget : public QWidget
 
 public:
     explicit GameWidget(QWidget *parent = nullptr);
-    void startGame(int durationSeconds, const QStringList &wordList, const QString &lang, double wordSpeed = 3.5);
+    void startGame(int durationSeconds, const QStringList &wordList, const QString &lang, double wordSpeed = 3.5, int fieldWidth = 800, int fieldHeight = 400);
     void stopGame();
     bool tryRemoveWord(const QString &input);
     void setWordSpeed(double speed);
@@ -39,6 +39,7 @@ private:
     void spawnWord();
     void updatePositions();
     void endGame();
+    void clearWords();
 
     QList<MovingWord> m_words;
     int m_spawnTimerId;
@@ -48,8 +49,8 @@ private:
     int m_score;
     QStringList m_dictionary;
     QString m_currentLanguage;
-    int m_linesCount;
-    QList<qreal> m_lineYPositions;
+    int m_fieldWidth;
+    int m_fieldHeight;
     double m_wordSpeed;
     QTimer *m_countdownTimer;
 };
