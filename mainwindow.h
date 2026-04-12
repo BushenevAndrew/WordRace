@@ -9,6 +9,7 @@ class QLineEdit;
 class QLabel;
 class QPushButton;
 class QSpinBox;
+class QComboBox;
 
 class MainWindow : public QMainWindow
 {
@@ -31,6 +32,7 @@ private:
     void saveSettings();
     void updateScoreDisplay(int score);
     void updateTimeDisplay(int seconds);
+    void updateLivesDisplay(int lives);
 
     GameWidget *m_gameWidget;
     QSettings m_settings;
@@ -39,9 +41,9 @@ private:
     int m_fieldWidth;
     int m_fieldHeight;
 
-    // UI элементы
     QLabel *m_scoreLabel;
     QLabel *m_timeLabel;
+    QLabel *m_livesLabel;
     QLineEdit *m_inputEdit;
     QPushButton *m_startButton;
     QPushButton *m_stopButton;

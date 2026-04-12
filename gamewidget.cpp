@@ -18,9 +18,11 @@ GameWidget::GameWidget(QWidget *parent) : QWidget(parent)
     m_countdownTimer = nullptr;
     m_fieldWidth = 800;
     m_fieldHeight = 400;
+    m_gameMode = TIMED;
+    m_lives = 3;
 }
 
-void GameWidget::startGame(int durationSeconds, const QStringList &wordList, const QString &lang, double wordSpeed, int fieldWidth, int fieldHeight)
+void GameWidget::startGame(int durationSeconds, const QStringList &wordList, const QString &lang, double wordSpeed, int fieldWidth, int fieldHeight, GameMode mode, int lives)
 {
     stopGame();
 
@@ -32,29 +34,34 @@ void GameWidget::startGame(int durationSeconds, const QStringList &wordList, con
     m_words.clear();
     m_fieldWidth = fieldWidth;
     m_fieldHeight = fieldHeight;
+    m_gameMode = mode;
+    m_lives = lives;
 
     emit scoreChanged(0);
-    emit timeLeftChanged(durationSeconds);
+    emit livesChanged(m_lives);
 
-    // Таймеры
-    m_spawnTimerId = startTimer(1800);
-    m_moveTimerId = startTimer(33);
+    if (m_gameMode == TIMED) {
+        m_spawnTimerId = startTimer(1800);
+        m_moveTimerId = startTimer(33);
 
-    m_gameTimer.start();
+        m_gameTimer.start();
 
-    // Таймер обратного отсчета
-    m_countdownTimer = new QTimer(this);
-    connect(m_countdownTimer, &QTimer::timeout, [this]() {
-        int elapsed = m_gameTimer.elapsed() / 1000;
-        int left = m_gameDuration - elapsed;
-        if (left <= 0) {
-            m_countdownTimer->stop();
-            endGame();
-        } else {
-            emit timeLeftChanged(left);
-        }
-    });
-    m_countdownTimer->start(1000);
+        m_countdownTimer = new QTimer(this);
+        connect(m_countdownTimer, &QTimer::timeout, [this]() {
+            int elapsed = m_gameTimer.elapsed() / 1000;
+            int left = m_gameDuration - elapsed;
+            if (left <= 0) {
+                m_countdownTimer->stop();
+                endGame();
+            } else {
+                emit timeLeftChanged(left);
+            }
+        });
+        m_countdownTimer->start(1000);
+    } else if (m_gameMode == SURVIVAL || m_gameMode == INFINITE) {
+        m_spawnTimerId = startTimer(1800);
+        m_moveTimerId = startTimer(33);
+    }
 }
 
 void GameWidget::stopGame()
@@ -72,7 +79,7 @@ void GameWidget::stopGame()
         m_countdownTimer->deleteLater();
         m_countdownTimer = nullptr;
     }
-    clearWords(); // Очищаем слова
+    clearWords();
 }
 
 void GameWidget::setWordSpeed(double speed)
@@ -94,7 +101,19 @@ bool GameWidget::tryRemoveWord(const QString &input)
             return true;
         }
     }
+    if (m_gameMode == SURVIVAL) {
+        loseLife();
+    }
     return false;
+}
+
+void GameWidget::loseLife()
+{
+    m_lives--;
+    emit livesChanged(m_lives);
+    if (m_lives <= 0) {
+        endGame();
+    }
 }
 
 void GameWidget::clearWords()
@@ -129,6 +148,9 @@ void GameWidget::updatePositions()
         m_words[i].x += m_wordSpeed;
 
         if (m_words[i].x > m_fieldWidth + 100) {
+            if (m_gameMode == SURVIVAL) {
+                loseLife();
+            }
             m_words.removeAt(i);
             i--;
             anyMoved = true;
@@ -146,10 +168,8 @@ void GameWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Отрисовка фона
     painter.fillRect(rect(), QColor(240, 240, 245));
 
-    // Рисуем слова
     QFont font("Arial", 18, QFont::Bold);
     painter.setFont(font);
 
@@ -165,7 +185,6 @@ void GameWidget::paintEvent(QPaintEvent *event)
         painter.drawText(textRect, Qt::AlignCenter, word.text);
     }
 
-    // Красная граница справа
     painter.setPen(QPen(Qt::red, 2, Qt::DashLine));
     painter.drawLine(m_fieldWidth - 10, 0, m_fieldWidth - 10, m_fieldHeight);
 }
