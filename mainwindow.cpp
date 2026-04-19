@@ -22,17 +22,21 @@
 #include <QListWidget>
 
 // Конструктор главного окна
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , m_settings("MyCompany", "WordRaceGame")  // Настройки приложения
-    , m_gameActive(false)                      // Флаг активности игры
-    , m_fieldWidth(800)                         // Ширина игрового поля по умолчанию
-    , m_fieldHeight(400)                        // Высота игрового поля по умолчанию
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),
+    m_settings("MyCompany", "WordRaceGame"),  // Настройки приложения
+    m_gameActive(false),                      // Флаг активности игры
+    m_fieldWidth(800),                         // Ширина игрового поля по умолчанию
+    m_fieldHeight(400)                        // Высота игрового поля по умолчанию
 {
-    setupUI();      // Настройка интерфейса
-    loadSettings(); // Загрузка сохранённых настроек
+    // Настройка интерфейса и загрузка настроек
+    setupUI();
+    loadSettings();
     setWindowTitle("Word Race Game");
-    resize(m_settings.value("windowWidth", 900).toInt(), m_settings.value("windowHeight", 600).toInt());
+    resize(m_settings.value("windowWidth", 900).toInt(),
+           m_settings.value("windowHeight", 600).toInt());
+
+    qDebug() << "MainWindow initialized. Current language:"
+             << m_settings.value("language").toString();
 }
 
 // Деструктор
@@ -42,6 +46,8 @@ MainWindow::~MainWindow()
     m_settings.setValue("windowWidth", width());
     m_settings.setValue("windowHeight", height());
     m_settings.sync();
+    qDebug() << "Settings saved. Window size:"
+             << width() << "x" << height();
 }
 
 // Настройка интерфейса главного окна
@@ -147,12 +153,20 @@ void MainWindow::setupUI()
             });
         }
     });
+
+    // Инициализация таймера для обновления интерфейса
+    m_updateTimer = new QTimer(this);
+    connect(m_updateTimer, &QTimer::timeout, this, &MainWindow::updateInterface);
+    m_updateTimer->start(500);
 }
 
 // Запуск игры
 void MainWindow::onStartGame()
 {
-    if (m_gameActive) return;
+    if (m_gameActive) {
+        qWarning() << "Game is already running!";
+        return;
+    }
 
     // Загрузка настроек игры
     int duration = m_settings.value("duration", 60).toInt();
@@ -204,12 +218,16 @@ void MainWindow::onStartGame()
 
     // Запуск игры
     m_gameWidget->startGame(duration, m_currentWordList, lang, speed, m_fieldWidth, m_fieldHeight, mode, lives);
+    qDebug() << "Game started. Mode:" << mode << "Duration:" << duration << "sec";
 }
 
 // Остановка игры
 void MainWindow::onStopGame()
 {
-    if (!m_gameActive) return;
+    if (!m_gameActive) {
+        qWarning() << "No active game to stop!";
+        return;
+    }
 
     m_gameWidget->stopGame();
     m_gameActive = false;
@@ -222,6 +240,8 @@ void MainWindow::onStopGame()
     m_scoreLabel->setText("Score: 0");
     m_timeLabel->setText("Time: 0 sec");
     m_livesLabel->setText("Lives: 3");
+
+    qDebug() << "Game stopped.";
 }
 
 // Обработка завершения игры
@@ -235,12 +255,15 @@ void MainWindow::onGameFinished(int score)
     m_editWordsButton->setEnabled(true);
     m_statisticsButton->setEnabled(true);
 
+    QString missedWords = QString::number(m_gameWidget->getTotalMissed());
     QMessageBox::information(this, "Game Over",
         QString("<h2>Game Finished!</h2>"
                 "<b>Your score:</b> %1<br>"
                 "<b>Missed words:</b> %2")
         .arg(score)
-        .arg(m_gameWidget->getTotalMissed()));
+        .arg(missedWords));
+
+    qDebug() << "Game finished. Final score:" << score << "Missed words:" << missedWords;
 }
 
 // Открытие окна настроек
@@ -417,6 +440,9 @@ void MainWindow::onOpenSettings()
         QMessageBox::information(this, "Settings Saved",
             "✅ Settings will be applied on next game start.\n\n"
             "Current field size: " + QString::number(m_fieldWidth) + "x" + QString::number(m_fieldHeight) + " px");
+
+        qDebug() << "Settings saved. Field size:"
+                 << m_fieldWidth << "x" << m_fieldHeight;
 
         dialog.accept();
     });
@@ -612,7 +638,8 @@ void MainWindow::onOpenStatistics()
     QVBoxLayout *layout = new QVBoxLayout(&dialog);
 
     // Общая статистика
-    QLabel *totalLabel = new QLabel(QString("<b>Total missed words:</b> %1").arg(m_gameWidget->getTotalMissed()));
+    QLabel *totalLabel = new QLabel(QString("<b>Total missed words:</b> %1")
+                                  .arg(m_gameWidget->getTotalMissed()));
     totalLabel->setStyleSheet("font-size: 16px; margin: 10px;");
 
     // Топ пропущенных слов
@@ -679,10 +706,21 @@ void MainWindow::loadSettings()
     // Обновление размеров игрового поля
     m_fieldWidth = m_settings.value("fieldWidth").toInt();
     m_fieldHeight = m_settings.value("fieldHeight").toInt();
+    qDebug() << "Settings loaded. Current field size:"
+             << m_fieldWidth << "x" << m_fieldHeight;
 }
 
 // Сохранение настроек в файл
 void MainWindow::saveSettings()
 {
     m_settings.sync();
+    qDebug() << "Settings saved to file.";
+}
+
+// Обновление интерфейса
+void MainWindow::updateInterface()
+{
+    if (m_gameActive && m_gameWidget) {
+        // Можно добавить дополнительную логику обновления интерфейса
+    }
 }
