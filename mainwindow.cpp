@@ -23,22 +23,23 @@
 
 // Конструктор главного окна
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , m_settings("MyCompany", "WordRaceGame")  // Настройки приложения
-    , m_gameActive(false)                      // Флаг активности игры
-    , m_fieldWidth(800)                         // Ширина игрового поля по умолчанию
-    , m_fieldHeight(400)                        // Высота игрового поля по умолчанию
+    : QMainWindow(parent),
+      m_settings("MyCompany", "WordRaceGame"),
+      m_gameActive(false),
+      m_fieldWidth(800),
+      m_fieldHeight(400)
 {
-    setupUI();      // Настройка интерфейса
-    loadSettings(); // Загрузка сохранённых настроек
+    setupUI();
+    loadSettings();
     setWindowTitle("Word Race Game");
-    resize(m_settings.value("windowWidth", 900).toInt(), m_settings.value("windowHeight", 600).toInt());
+    resize(m_settings.value("windowWidth", 900).toInt(),
+           m_settings.value("windowHeight", 600).toInt());
 }
 
 // Деструктор
 MainWindow::~MainWindow()
 {
-    // Сохранение размеров окна при закрытии
+    // Сохраняем размеры окна при закрытии
     m_settings.setValue("windowWidth", width());
     m_settings.setValue("windowHeight", height());
     m_settings.sync();
@@ -53,46 +54,36 @@ void MainWindow::setupUI()
     // Верхняя панель с метками и кнопками
     QHBoxLayout *topLayout = new QHBoxLayout;
 
-    // Метка счёта
+    // Метки для отображения счёта, времени и жизней
     m_scoreLabel = new QLabel("Score: 0");
     m_scoreLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;");
 
-    // Метка времени
     m_timeLabel = new QLabel("Time: 0 sec");
     m_timeLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #e74c3c;");
 
-    // Метка жизней (скрыта по умолчанию)
     m_livesLabel = new QLabel("Lives: 3");
     m_livesLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #27ae60;");
     m_livesLabel->setVisible(false);
 
-    // Кнопка "Старт"
+    // Кнопки управления игрой
     m_startButton = new QPushButton("▶ Start Game");
-    m_startButton->setStyleSheet("QPushButton { background-color: #27ae60; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }"
-                                 "QPushButton:hover { background-color: #229954; }");
+    m_startButton->setStyleSheet("QPushButton { background-color: #27ae60; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }""QPushButton:hover { background-color: #229954; }");
 
-    // Кнопка "Стоп" (скрыта по умолчанию)
     m_stopButton = new QPushButton("⏹ Stop Game");
-    m_stopButton->setStyleSheet("QPushButton { background-color: #e74c3c; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }"
-                                "QPushButton:hover { background-color: #c0392b; }");
+    m_stopButton->setStyleSheet("QPushButton { background-color: #e74c3c; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }""QPushButton:hover { background-color: #c0392b; }");
     m_stopButton->setVisible(false);
 
-    // Кнопка "Настройки"
+    // Кнопки настроек и редакции слов
     m_settingsButton = new QPushButton("⚙ Settings");
-    m_settingsButton->setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }"
-                                    "QPushButton:hover { background-color: #2980b9; }");
+    m_settingsButton->setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }""QPushButton:hover { background-color: #2980b9; }");
 
-    // Кнопка "Редактор слов"
     m_editWordsButton = new QPushButton("✏ Edit Words");
-    m_editWordsButton->setStyleSheet("QPushButton { background-color: #e67e22; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }"
-                                     "QPushButton:hover { background-color: #d35400; }");
+    m_editWordsButton->setStyleSheet("QPushButton { background-color: #e67e22; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }""QPushButton:hover { background-color: #d35400; }");
 
-    // Кнопка "Статистика"
     m_statisticsButton = new QPushButton("📊 Stats");
-    m_statisticsButton->setStyleSheet("QPushButton { background-color: #34495e; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }"
-                                     "QPushButton:hover { background-color: #2c3e50; }");
+    m_statisticsButton->setStyleSheet("QPushButton { background-color: #34495e; color: white; padding: 8px 16px; border-radius: 5px; font-weight: bold; }""QPushButton:hover { background-color: #2c3e50; }");
 
-    // Добавление виджетов в верхнюю панель
+    // Добавляем виджеты в верхнюю панель
     topLayout->addWidget(m_scoreLabel);
     topLayout->addWidget(m_livesLabel);
     topLayout->addStretch();
@@ -104,25 +95,24 @@ void MainWindow::setupUI()
     topLayout->addWidget(m_editWordsButton);
     topLayout->addWidget(m_statisticsButton);
 
-    // Создание и настройка виджета игры
+    // Создаём и настраиваем виджет игры
     m_gameWidget = new GameWidget(this);
     m_gameWidget->setMinimumSize(m_fieldWidth, m_fieldHeight);
 
     // Поле для ввода слов
     m_inputEdit = new QLineEdit;
     m_inputEdit->setPlaceholderText("✏ Type the word here and press Enter...");
-    m_inputEdit->setStyleSheet("QLineEdit { padding: 12px; font-size: 14px; border: 2px solid #bdc3c7; border-radius: 5px; }"
-                               "QLineEdit:focus { border-color: #3498db; }");
+    m_inputEdit->setStyleSheet("QLineEdit { padding: 12px; font-size: 14px; border: 2px solid #bdc3c7; border-radius: 5px; }""QLineEdit:focus { border-color: #3498db; }");
     m_inputEdit->setEnabled(false);
 
-    // Добавление виджетов в основной макет
+    // Добавляем виджеты в основной макет
     mainLayout->addLayout(topLayout);
     mainLayout->addWidget(m_gameWidget, 1);
     mainLayout->addWidget(m_inputEdit);
 
     setCentralWidget(centralWidget);
 
-    // Подключение сигналов и слотов
+    // Подключаем сигналы и слоты
     connect(m_startButton, &QPushButton::clicked, this, &MainWindow::onStartGame);
     connect(m_stopButton, &QPushButton::clicked, this, &MainWindow::onStopGame);
     connect(m_settingsButton, &QPushButton::clicked, this, &MainWindow::onOpenSettings);
@@ -142,8 +132,7 @@ void MainWindow::setupUI()
             // Подсветка ошибки ввода
             m_inputEdit->setStyleSheet("QLineEdit { padding: 12px; font-size: 14px; border: 2px solid #e74c3c; border-radius: 5px; }");
             QTimer::singleShot(200, [this]() {
-                m_inputEdit->setStyleSheet("QLineEdit { padding: 12px; font-size: 14px; border: 2px solid #bdc3c7; border-radius: 5px; }"
-                                           "QLineEdit:focus { border-color: #3498db; }");
+                m_inputEdit->setStyleSheet("QLineEdit { padding: 12px; font-size: 14px; border: 2px solid #bdc3c7; border-radius: 5px; }""QLineEdit:focus { border-color: #3498db; }");
             });
         }
     });
@@ -154,7 +143,7 @@ void MainWindow::onStartGame()
 {
     if (m_gameActive) return;
 
-    // Загрузка настроек игры
+    // Загружаем настройки игры
     int duration = m_settings.value("duration", 60).toInt();
     double speed = m_settings.value("speed", 3.5).toDouble();
     QString lang = m_settings.value("language", "en").toString();
@@ -162,7 +151,7 @@ void MainWindow::onStartGame()
     GameMode mode = static_cast<GameMode>(m_settings.value("mode", TIMED).toInt());
     int lives = m_settings.value("lives", 3).toInt();
 
-    // Загрузка слов из файла или использование слов по умолчанию
+    // Загружаем слова из файла или используем слова по умолчанию
     if (!wordFilePath.isEmpty() && QFile::exists(wordFilePath)) {
         m_currentWordList = WordListLoader::loadFromFile(wordFilePath);
     } else {
@@ -174,13 +163,13 @@ void MainWindow::onStartGame()
         WordListLoader::saveToFile(wordFilePath, m_currentWordList);
     }
 
-    // Проверка наличия слов
+    // Проверяем наличие слов
     if (m_currentWordList.isEmpty()) {
         QMessageBox::warning(this, "Error", "No words to play!\nPlease add some words using the 'Edit Words' button.");
         return;
     }
 
-    // Настройка интерфейса для игры
+    // Настраиваем интерфейс для игры
     m_gameActive = true;
     m_inputEdit->setEnabled(true);
     m_inputEdit->clear();
@@ -190,7 +179,7 @@ void MainWindow::onStartGame()
     m_settingsButton->setEnabled(false);
     m_editWordsButton->setEnabled(false);
 
-    // Настройка отображения меток в зависимости от режима игры
+    // Настраиваем отображение меток в зависимости от режима игры
     if (mode == SURVIVAL) {
         m_timeLabel->setVisible(false);
         m_livesLabel->setVisible(true);
@@ -202,7 +191,7 @@ void MainWindow::onStartGame()
         m_livesLabel->setVisible(false);
     }
 
-    // Запуск игры
+    // Запускаем игру
     m_gameWidget->startGame(duration, m_currentWordList, lang, speed, m_fieldWidth, m_fieldHeight, mode, lives);
 }
 
@@ -236,11 +225,7 @@ void MainWindow::onGameFinished(int score)
     m_statisticsButton->setEnabled(true);
 
     QMessageBox::information(this, "Game Over",
-        QString("<h2>Game Finished!</h2>"
-                "<b>Your score:</b> %1<br>"
-                "<b>Missed words:</b> %2")
-        .arg(score)
-        .arg(m_gameWidget->getTotalMissed()));
+        QString("<h2>Game Finished!</h2>""<b>Your score:</b> %1<br>""<b>Missed words:</b> %2").arg(score).arg(m_gameWidget->getTotalMissed()));
 }
 
 // Открытие окна настроек
@@ -294,13 +279,12 @@ void MainWindow::onOpenSettings()
     fieldGroup->setStyleSheet("QGroupBox { font-weight: bold; margin-top: 10px; }");
     QFormLayout *fieldForm = new QFormLayout(fieldGroup);
 
-    // Настройка ширины поля
+    // Настройка ширины и высоты поля
     m_widthSpin = new QSpinBox;
     m_widthSpin->setRange(400, 1600);
     m_widthSpin->setValue(m_settings.value("fieldWidth", 800).toInt());
     m_widthSpin->setSuffix(" px");
 
-    // Настройка высоты поля
     m_heightSpin = new QSpinBox;
     m_heightSpin->setRange(300, 900);
     m_heightSpin->setValue(m_settings.value("fieldHeight", 400).toInt());
@@ -346,12 +330,7 @@ void MainWindow::onOpenSettings()
     wordsLayout->addWidget(previewEdit);
 
     // Информация о формате файла
-    QLabel *formatInfo = new QLabel(
-        "📖 <b>File format:</b><br>"
-        "• One word per line<br>"
-        "• Or comma-separated: cat,dog,sun<br>"
-        "• Lines starting with # are ignored"
-    );
+    QLabel *formatInfo = new QLabel("📖 <b>File format:</b><br>""• One word per line<br>""• Or comma-separated: cat,dog,sun<br>""• Lines starting with # are ignored");
     formatInfo->setWordWrap(true);
     formatInfo->setStyleSheet("color: #7f8c8d; font-size: 11px; margin-top: 10px;");
 
@@ -399,7 +378,7 @@ void MainWindow::onOpenSettings()
 
     // Обработка кнопки "OK"
     connect(buttons, &QDialogButtonBox::accepted, [&]() {
-        // Сохранение настроек
+        // Сохраняем настройки
         m_settings.setValue("duration", durationSpin->value());
         m_settings.setValue("speed", speedSpin->value());
         m_settings.setValue("language", langCombo->currentText() == "Русский" ? "ru" : "en");
@@ -409,14 +388,12 @@ void MainWindow::onOpenSettings()
         m_settings.setValue("fieldWidth", m_widthSpin->value());
         m_settings.setValue("fieldHeight", m_heightSpin->value());
 
-        // Обновление размеров игрового поля
+        // Обновляем размеры игрового поля
         m_fieldWidth = m_widthSpin->value();
         m_fieldHeight = m_heightSpin->value();
         m_gameWidget->setMinimumSize(m_fieldWidth, m_fieldHeight);
 
-        QMessageBox::information(this, "Settings Saved",
-            "✅ Settings will be applied on next game start.\n\n"
-            "Current field size: " + QString::number(m_fieldWidth) + "x" + QString::number(m_fieldHeight) + " px");
+        QMessageBox::information(this, "Settings Saved","✅ Settings will be applied on next game start.\n\n""Current field size: " + QString::number(m_fieldWidth) + "x" + QString::number(m_fieldHeight) + " px");
 
         dialog.accept();
     });
@@ -436,11 +413,7 @@ void MainWindow::onOpenWordEditor()
 
     QVBoxLayout *layout = new QVBoxLayout(&dialog);
 
-    QLabel *infoLabel = new QLabel(
-        "<h3>📝 Edit Your Word List</h3>"
-        "<p>Add, remove, or modify words for the game.<br>"
-        "<b>Tip:</b> Each word should be on a new line.</p>"
-    );
+    QLabel *infoLabel = new QLabel("<h3>📝 Edit Your Word List</h3>""<p>Add, remove, or modify words for the game.<br>""<b>Tip:</b> Each word should be on a new line.</p>");
     infoLabel->setWordWrap(true);
     layout->addWidget(infoLabel);
 
@@ -448,7 +421,7 @@ void MainWindow::onOpenWordEditor()
     wordEditor->setFont(QFont("Consolas", 11));
     wordEditor->setStyleSheet("QTextEdit { background-color: white; border: 2px solid #bdc3c7; border-radius: 5px; padding: 10px; }");
 
-    // Загрузка текущего списка слов
+    // Загружаем текущий список слов
     QString wordFilePath = m_settings.value("wordfile", WordListLoader::getDefaultWordFilePath()).toString();
     QStringList currentWords;
 
@@ -468,25 +441,18 @@ void MainWindow::onOpenWordEditor()
 
     QHBoxLayout *buttonLayout = new QHBoxLayout;
 
-    // Кнопка загрузки из файла
+    // Кнопки управления словарём
     QPushButton *loadFileBtn = new QPushButton("📂 Load from File");
-    loadFileBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #3498db; color: white; border-radius: 5px; }"
-                               "QPushButton:hover { background-color: #2980b9; }");
+    loadFileBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #3498db; color: white; border-radius: 5px; }""QPushButton:hover { background-color: #2980b9; }");
 
-    // Кнопка сохранения в файл
     QPushButton *saveToFileBtn = new QPushButton("💾 Save to File");
-    saveToFileBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #27ae60; color: white; border-radius: 5px; }"
-                                 "QPushButton:hover { background-color: #229954; }");
+    saveToFileBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #27ae60; color: white; border-radius: 5px; }""QPushButton:hover { background-color: #229954; }");
 
-    // Кнопка сброса на стандартные слова
     QPushButton *defaultWordsBtn = new QPushButton("🔄 Reset to Default");
-    defaultWordsBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #e67e22; color: white; border-radius: 5px; }"
-                                   "QPushButton:hover { background-color: #d35400; }");
+    defaultWordsBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #e67e22; color: white; border-radius: 5px; }""QPushButton:hover { background-color: #d35400; }");
 
-    // Кнопка очистки всех слов
     QPushButton *clearBtn = new QPushButton("🗑 Clear All");
-    clearBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #e74c3c; color: white; border-radius: 5px; }"
-                            "QPushButton:hover { background-color: #c0392b; }");
+    clearBtn->setStyleSheet("QPushButton { padding: 8px 16px; background-color: #e74c3c; color: white; border-radius: 5px; }""QPushButton:hover { background-color: #c0392b; }");
 
     buttonLayout->addWidget(loadFileBtn);
     buttonLayout->addWidget(saveToFileBtn);
@@ -507,8 +473,7 @@ void MainWindow::onOpenWordEditor()
                 wordCount++;
             }
         }
-        statsLabel->setText(QString("📊 Statistics: %1 words loaded | %2 lines total")
-                           .arg(wordCount).arg(lines.size()));
+        statsLabel->setText(QString("📊 Statistics: %1 words loaded | %2 lines total").arg(wordCount).arg(lines.size()));
     };
 
     updateStats();
@@ -612,7 +577,9 @@ void MainWindow::onOpenStatistics()
     QVBoxLayout *layout = new QVBoxLayout(&dialog);
 
     // Общая статистика
-    QLabel *totalLabel = new QLabel(QString("<b>Total missed words:</b> %1").arg(m_gameWidget->getTotalMissed()));
+    QLabel *totalLabel = new QLabel(
+        QString("<b>Total missed words:</b> %1").arg(m_gameWidget->getTotalMissed())
+    );
     totalLabel->setStyleSheet("font-size: 16px; margin: 10px;");
 
     // Топ пропущенных слов
@@ -666,7 +633,7 @@ void MainWindow::updateStatisticsDisplay()
 // Загрузка настроек из файла
 void MainWindow::loadSettings()
 {
-    // Установка значений по умолчанию, если настройки не существуют
+    // Устанавливаем значения по умолчанию, если настройки не существуют
     if (!m_settings.contains("duration")) m_settings.setValue("duration", 60);
     if (!m_settings.contains("speed")) m_settings.setValue("speed", 3.5);
     if (!m_settings.contains("language")) m_settings.setValue("language", "en");
@@ -676,13 +643,7 @@ void MainWindow::loadSettings()
     if (!m_settings.contains("fieldWidth")) m_settings.setValue("fieldWidth", 800);
     if (!m_settings.contains("fieldHeight")) m_settings.setValue("fieldHeight", 400);
 
-    // Обновление размеров игрового поля
+    // Обновляем размеры игрового поля
     m_fieldWidth = m_settings.value("fieldWidth").toInt();
     m_fieldHeight = m_settings.value("fieldHeight").toInt();
-}
-
-// Сохранение настроек в файл
-void MainWindow::saveSettings()
-{
-    m_settings.sync();
 }

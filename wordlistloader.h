@@ -12,12 +12,15 @@
 #include <QJsonObject>
 #include <QFileInfo>
 
-
 /**
  * @brief Класс для загрузки и сохранения списков слов в разных форматах.
  *
- * Поддерживает форматы: TXT (по умолчанию), JSON, CSV.
- * Каждый метод класса снабжён логикой обработки ошибок и возвращает
+ * Поддерживает форматы:
+ * - TXT (по умолчанию)
+ * - JSON
+ * - CSV
+ *
+ * Каждый метод снабжен логикой обработки ошибок и возвращает
  * список слов по умолчанию, если произошла ошибка.
  */
 class WordListLoader
@@ -31,7 +34,7 @@ public:
     };
 
     /**
-     * @brief Загрузка списка слов из файла указанного пути.
+     * @brief Загружает список слов из файла по указанному пути.
      *
      * Автоматически определяет формат файла по расширению.
      * Если файл не найден или пуст, возвращает список слов по умолчанию.
@@ -46,7 +49,7 @@ public:
         // Проверка существования файла
         if (filePath.isEmpty() || !QFile::exists(filePath)) {
             qDebug() << "File not found or empty path:" << filePath;
-            return getDefaultWords();  // Возвращаем слова по умолчанию
+            return getDefaultWords();
         }
 
         // Определение формата файла по расширению
@@ -76,7 +79,7 @@ public:
     }
 
     /**
-     * @brief Сохранение списка слов в файл указанного пути.
+     * @brief Сохраняет список слов в файл по указанному пути.
      *
      * Автоматически определяет формат файла по расширению.
      * Если путь пуст, возвращает false.
@@ -109,7 +112,7 @@ public:
     }
 
     /**
-     * @brief Определение формата файла по его расширению.
+     * @brief Определяет формат файла по его расширению.
      *
      * Если расширение ".json", возвращает JSON.
      * Если расширение ".csv", возвращает CSV.
@@ -123,16 +126,16 @@ public:
         QString ext = QFileInfo(filePath).suffix().toLower();
         if (ext == "json") return JSON;
         if (ext == "csv") return CSV;
-        return TXT; // По умолчанию — текстовый формат
+        return TXT;
     }
 
     /**
-     * @brief Загрузка списка слов из текстового файла.
+     * @brief Загружает список слов из текстового файла.
      *
-     * Поддерживает формат:
-     * • Одно слово на строке
-     * • Строки, разделённые запятыми (например: "cat,dog")
-     * • Строки, начинающиеся с #, игнорируются (комментарии)
+     * Поддерживает форматы:
+     * - Одно слово на строке
+     * - Строки, разделенные запятыми (например: "cat,dog")
+     * - Строки, начинающиеся с #, игнорируются (комментарии)
      *
      * @param filePath Путь к текстовому файлу.
      * @return QStringList Список загруженных слов.
@@ -141,6 +144,7 @@ public:
     {
         QStringList words;
         QFile file(filePath);
+
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             qDebug() << "Cannot open file:" << filePath;
             return getDefaultWords();
@@ -149,28 +153,31 @@ public:
         QTextStream stream(&file);
         while (!stream.atEnd()) {
             QString line = stream.readLine().trimmed();
+
             if (line.isEmpty() || line.startsWith('#')) {
-                continue;  // Игнорируем пустые строки и комментарии
+                continue;
             }
+
             if (line.contains(',')) {
                 // Если строка содержит запятые, разбиваем на слова
                 QStringList lineWords = line.split(',', QString::SkipEmptyParts);
                 for (QString &word : lineWords) {
                     word = word.trimmed();
                     if (!word.isEmpty()) {
-                        words.append(word);  // Добавляем слово
+                        words.append(word);
                     }
                 }
             } else {
-                words.append(line);  // Одно слово на строку
+                words.append(line);
             }
         }
+
         file.close();
         return words;
     }
 
     /**
-     * @brief Загрузка списка слов из файла формата JSON.
+     * @brief Загружает список слов из файла формата JSON.
      *
      * Поддерживает два варианта структуры JSON:
      * 1. Простой массив строк: ["cat", "dog"]
@@ -183,6 +190,7 @@ public:
     {
         QStringList words;
         QFile file(filePath);
+
         if (!file.open(QIODevice::ReadOnly)) {
             qDebug() << "Cannot open file:" << filePath;
             return getDefaultWords();
@@ -194,6 +202,7 @@ public:
         // Обработка ошибок парсинга JSON
         QJsonParseError error;
         QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+
         if (error.error != QJsonParseError::NoError) {
             qDebug() << "JSON parse error:" << error.errorString();
             return getDefaultWords();
@@ -204,7 +213,7 @@ public:
             QJsonArray array = doc.array();
             for (const QJsonValue &value : array) {
                 if (value.isString()) {
-                    words.append(value.toString());  // Добавляем строку
+                    words.append(value.toString());
                 }
             }
         } else if (doc.isObject()) {
@@ -223,11 +232,11 @@ public:
     }
 
     /**
-     * @brief Загрузка списка слов из файла формата CSV.
+     * @brief Загружает список слов из файла формата CSV.
      *
      * Поддерживает формат:
-     * • Одно слово на строку
-     * • Строки, начинающиеся с #, игнорируются (комментарии)
+     * - Одно слово на строку
+     * - Строки, начинающиеся с #, игнорируются (комментарии)
      *
      * @param filePath Путь к CSV-файлу.
      * @return QStringList Список загруженных слов.
@@ -236,6 +245,7 @@ public:
     {
         QStringList words;
         QFile file(filePath);
+
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             qDebug() << "Cannot open file:" << filePath;
             return getDefaultWords();
@@ -254,21 +264,22 @@ public:
             for (QString &word : lineWords) {
                 word = word.trimmed();
                 if (!word.isEmpty()) {
-                    words.append(word);  // Добавляем слово
+                    words.append(word);
                 }
             }
         }
+
         file.close();
         return words;
     }
 
     /**
-     * @brief Сохранение списка слов в текстовом формате.
+     * @brief Сохраняет список слов в текстовом формате.
      *
      * Добавляет комментарии в начале файла:
-     * • "# Word list for Word Race Game"
-     * • "# Each word on a new line"
-     * • "# Lines starting with # are ignored"
+     * - "# Word list for Word Race Game"
+     * - "# Each word on a new line"
+     * - "# Lines starting with # are ignored"
      *
      * @param filePath Путь к файлу.
      * @param words Список слов для сохранения.
@@ -277,12 +288,14 @@ public:
     static bool saveToTxt(const QString &filePath, const QStringList &words)
     {
         QFile file(filePath);
+
         if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             qDebug() << "Cannot open file for writing:" << filePath;
             return false;
         }
 
         QTextStream stream(&file);
+
         // Заголовок с комментариями
         stream << "# Word list for Word Race Game\n";
         stream << "# Each word on a new line\n";
@@ -300,9 +313,9 @@ public:
     }
 
     /**
-     * @brief Сохранение списка слов в формате JSON.
+     * @brief Сохраняет список слов в формате JSON.
      *
-     * Создаёт простой массив строк:
+     * Создает простой массив строк:
      * ["cat", "dog", ...]
      *
      * @param filePath Путь к файлу.
@@ -312,6 +325,7 @@ public:
     static bool saveToJson(const QString &filePath, const QStringList &words)
     {
         QFile file(filePath);
+
         if (!file.open(QIODevice::WriteOnly)) {
             qDebug() << "Cannot open file for writing:" << filePath;
             return false;
@@ -330,7 +344,7 @@ public:
     }
 
     /**
-     * @brief Сохранение списка слов в формате CSV.
+     * @brief Сохраняет список слов в формате CSV.
      *
      * На самом деле, сохраняет в том же формате, что и TXT,
      * но с расширением .csv (для единообразия).
@@ -342,12 +356,14 @@ public:
     static bool saveToCsv(const QString &filePath, const QStringList &words)
     {
         QFile file(filePath);
+
         if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             qDebug() << "Cannot open file for writing:" << filePath;
             return false;
         }
 
         QTextStream stream(&file);
+
         // Заголовок с комментариями
         stream << "# Word list for Word Race Game\n";
         stream << "# Each word on a new line\n";
@@ -378,9 +394,9 @@ public:
      * @brief Возвращает список слов по умолчанию на английском языке.
      *
      * Используется, если:
-     * • Файл со словами не найден
-     * • Файл пуст
-     * • Произошла ошибка при загрузке
+     * - Файл со словами не найден
+     * - Файл пуст
+     * - Произошла ошибка при загрузке
      *
      * @return QStringList Список слов по умолчанию.
      */
@@ -397,10 +413,10 @@ public:
      * @brief Возвращает список слов по умолчанию на русском языке.
      *
      * Используется, если:
-     * • Файл со словами не найден
-     * • Файл пуст
-     * • Произошла ошибка при загрузке
-     * • Выбран русский язык
+     * - Файл со словами не найден
+     * - Файл пуст
+     * - Произошла ошибка при загрузке
+     * - Выбран русский язык
      *
      * @return QStringList Список слов по умолчанию.
      */
